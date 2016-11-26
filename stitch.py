@@ -14,27 +14,29 @@ def plan_optimizer(imageLevels):
 	width = imageLevels[0][1]
 	height = imageLevels[0][0]
 
-	wMax = 0
-	hMax = 0
-	wList = []
-	for img in imageLevels:
-		wMax += img[1]
-		hMax += img[0]
-		wList.append(img[1])
+	imageLevelsTransp = [(img[1], img[0]) for img in imageLevels]
+	plan = make_stitch_plan_(imageLevelsTransp, width, height)
 	
+	wMax = 0
+	for img, loc in zip(imageLevelsTransp, plan):
+		hh = loc[0] + img[0]
+		wMax = hh if hh > wMax else wMax
+	
+	print wMax
+	minArea = wMax * height
+	wList = map(lambda x : x[1], imageLevels)
+
 	print imageLevels
 	print wList
 	wTable = get_table(wList)
-	wTable = filter(lambda x : x >= width, wTable)
+	wTable = filter(lambda x : x >= width and x <= wMax, wTable)
 	
 	print wTable
-	minArea = min(width * hMax, height * wMax)
 	optPlan = []
 	
 	for w in wTable:
 		plan = make_stitch_plan_(imageLevels, height, w)
 		area = get_plan_area(imageLevels, plan)
-		print plan, area
 		if area <= minArea:
 			optPlan = plan
 			minArea = area
@@ -224,6 +226,26 @@ def make_stitch_plan_(imageLevels, MAX_COL, MAX_ROW):
 		
 	return plan
 
+def make_stitch_plan_recursive(imageLevels, MAX_COL, MAX_ROW):
+	if len(imageLevels) == 0: return []
+	nImages = len(imageLevels)
+	removeIdx = nImages
+	for idx, img in enumerate(imageLevels):
+		hImage = img[0]
+		wImage = img[1]
+		if MAX_COL >= hImage and MAX_ROW >= wImage:
+			removeIdx = idx
+			break	
+	if removeIdx == nImages:
+			return []
+	img = imageLevels.pop(removeIdx)
+	bottom = make_stitch_plan_recursive(imageLevels, img[0], MAX_ROW - img[1])
+	left = make_stitch_plan_recursive(imageLevels, MAX_COL - img[0], MAX_ROW)
+	
+	bottom = map(lambda x:(x[0], x[1] + img[1], x[2], x[3]), bottom)
+	left = map(lambda x:(x[0] + img[0], x[1], x[2], x[3]), left)
+	return [(0, 0, img[0], img[1])] + bottom + left
+	
 def get_plan_area(imageLevels, plan):
 	h = 0
 	w = 0
@@ -317,12 +339,15 @@ if __name__ == "__main__":
 	
 	print 'Image Levels: ', imageLevels
 	
-	plan = make_stitch_plan_(imageLevels, height, width)
+	# plan = make_stitch_plan_(imageLevels, height, 838)
+	plan = make_stitch_plan_recursive(imageLevels, 9999, width)
+	imageLevels = [(x[2], x[3]) for x in plan]
+	plan = [(x[0], x[1]) for x in plan]
 	
-	#plan, minArea = plan_optimizer(imageLevels)
+	# plan, minArea = plan_optimizer(imageLevels)
 	
 	print 'Stitch Plan: ', plan
-	#print 'Min Area: ', minArea
+	# print 'Min Area: ', minArea
 	
 	plane = do_stitch(beauty, imageLevels, plan)
 	
