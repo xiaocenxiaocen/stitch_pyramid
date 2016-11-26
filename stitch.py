@@ -7,6 +7,8 @@ Prototype program for stitching pyramid images into a large plane
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from sys import argv, exit
+from PIL import Image
 
 def plan_optimizer(imageLevels):
 	width = imageLevels[0][1]
@@ -256,36 +258,72 @@ def make_plan_visual(imageLevels, plan):
 	plt.figure(figsize = (10, 10))
 	plt.imshow(plane)
 	plt.show()
-	plt.colorbar()
 	plt.gca().set_aspect('auto')
 	
 	return plane
 	
+def do_stitch(image, imageLevels, plan):
+	h = 0
+	w = 0
+	for img, loc in zip(imageLevels, plan):
+		hh = loc[0] + img[0]
+		ww = loc[1] + img[1]
+		h = hh if hh > h else h
+		w = ww if ww > w else w
+			
+	plane = Image.new('RGB', (w, h))
+	
+	for img, loc in zip(imageLevels, plan):
+		box = (loc[1], loc[0], loc[1] + img[1], loc[0] + img[0])
+		level = image.resize((img[1], img[0]), Image.BILINEAR)
+		plane.paste(level, box)
+	
+	return plane
+	
 if __name__ == "__main__":
-	width = 690
-	height = 490
+	if not len(argv) == 5:
+		print 'usage: inputfile downscalerate minedge outputfile'
+		exit(0)
 	
-	downscaleRate = 0.707
+	inputImage = argv[1]
+	downscaleRate = float(argv[2])
+	minEdge = int(argv[3])
+	outputImage = argv[4]
+	print 'Input Image File Name: ', inputImage
+	print 'Downscale Rate: ', downscaleRate
+	print 'Minimal Edge Length: ', minEdge
+	print 'Output Image File Name: ', outputImage	
 	
-	minLen = 24
+	# plan = make_stitch_plan(imageLevels, height, 890)
 	
+	# optPlan, minArea = plan_optimizer(imageLevels)
+	
+	# print 'Optimized stitch plan:', optPlan
+	# print 'minimum area:', minArea
+	
+	# make_plan_visual(imageLevels, optPlan)
+
+	# TODO: read test image, resize image with different size, stitch the pyramid images into a large plane with the stitch plan
+
+	beauty = Image.open(inputImage)
+	width, height = beauty.size
 	w = width
 	h = height
 	imageLevels = []
-	while w >= minLen and h >= minLen:
+	while w >= minEdge and h >= minEdge:
 		imageLevels.append((h, w))
 		w = int(w * downscaleRate + 0.5)
 		h = int(h * downscaleRate + 0.5)
 	
-	print imageLevels
+	print 'Image Levels: ', imageLevels
 	
-	plan = make_stitch_plan(imageLevels, height, 890)
+	plan = make_stitch_plan_(imageLevels, height, width)
 	
-	optPlan, minArea = plan_optimizer(imageLevels)
+	#plan, minArea = plan_optimizer(imageLevels)
 	
-	print 'Optimized stitch plan:', optPlan
-	print 'minimum area:', minArea
+	print 'Stitch Plan: ', plan
+	#print 'Min Area: ', minArea
 	
-	make_plan_visual(imageLevels, optPlan)
-
-	# TODO: read test image, resize image with different size, stitch the pyramid images into a large plane with the stitch plan
+	plane = do_stitch(beauty, imageLevels, plan)
+	
+	plane.save(outputImage)
