@@ -43,6 +43,43 @@ def plan_optimizer(imageLevels):
 	
 	return optPlan, minArea
 
+def plan_optimizer_recursive(imageLevels):
+	width = imageLevels[0][1]
+	height = imageLevels[0][0]
+
+	imageLevelsTransp = [(img[1], img[0]) for img in imageLevels]
+	plan = make_stitch_plan_(imageLevelsTransp, width, height)
+	
+	wMax = 0
+	for img, loc in zip(imageLevelsTransp, plan):
+		hh = loc[0] + img[0]
+		wMax = hh if hh > wMax else wMax
+	
+	print wMax
+	minArea = wMax * height
+	wList = map(lambda x : x[1], imageLevels)
+
+	print imageLevels
+	print wList
+	wTable = get_table(wList)
+	wTable = filter(lambda x : x >= width and x <= wMax, wTable)
+	
+	print wTable
+	optPlan = []
+	
+	for w in wTable:
+		tmpLevels = list(imageLevels)
+		plan = make_stitch_plan_recursive(tmpLevels, 9999, w)
+		tmpLevels = [(x[2], x[3]) for x in plan]
+		plan = [(x[0], x[1]) for x in plan]
+		area = get_plan_area(tmpLevels, plan)
+		if area <= minArea:
+			optLevels = tmpLevels
+			optPlan = plan
+			minArea = area
+	
+	return optLevels, optPlan, minArea
+
 def get_table(wList):
 	if len(wList) == 0: return []
 	if len(wList) == 1: return wList
@@ -338,17 +375,25 @@ if __name__ == "__main__":
 		h = int(h * downscaleRate + 0.5)
 	
 	print 'Image Levels: ', imageLevels
-	
-	# plan = make_stitch_plan_(imageLevels, height, 838)
-	plan = make_stitch_plan_recursive(imageLevels, 9999, width)
-	imageLevels = [(x[2], x[3]) for x in plan]
+
+	plan = make_stitch_plan_(imageLevels, height, width)
+	print 'Stitch plan with BLF: ', plan
+	plane = do_stitch(beauty, imageLevels, plan)
+	plane.save(outputImage + '_BLF.jpg')
+
+	tmpLevels = list(imageLevels)
+	plan = make_stitch_plan_recursive(tmpLevels, 9999, width)
+	tmpLevels = [(x[2], x[3]) for x in plan]
 	plan = [(x[0], x[1]) for x in plan]
-	
-	# plan, minArea = plan_optimizer(imageLevels)
+	print 'Stitch plan with recursive method: ', plan
+	plane = do_stitch(beauty, tmpLevels, plan)
+	plane.save(outputImage + '_recursive.jpg')
+
+	levels, plan, minArea = plan_optimizer_recursive(imageLevels)
 	
 	print 'Stitch Plan: ', plan
-	# print 'Min Area: ', minArea
+	print 'Min Area: ', minArea
 	
-	plane = do_stitch(beauty, imageLevels, plan)
+	plane = do_stitch(beauty, levels, plan)
 	
 	plane.save(outputImage)
