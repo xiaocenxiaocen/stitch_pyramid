@@ -379,7 +379,7 @@ if __name__ == "__main__":
 	plan = make_stitch_plan_(imageLevels, height, width)
 	print 'Stitch plan with BLF: ', plan
 	plane = do_stitch(beauty, imageLevels, plan)
-	plane.save(outputImage + '_BLF.jpg')
+	plane.save(outputImage + '.BLF.jpg')
 
 	tmpLevels = list(imageLevels)
 	plan = make_stitch_plan_recursive(tmpLevels, 9999, width)
@@ -387,7 +387,7 @@ if __name__ == "__main__":
 	plan = [(x[0], x[1]) for x in plan]
 	print 'Stitch plan with recursive method: ', plan
 	plane = do_stitch(beauty, tmpLevels, plan)
-	plane.save(outputImage + '_recursive.jpg')
+	plane.save(outputImage + '.recursive.jpg')
 
 	levels, plan, minArea = plan_optimizer_recursive(imageLevels)
 	
